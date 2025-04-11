@@ -1,0 +1,362 @@
+# Part 1: UAV Pitch Dynamics Project
+
+This document outlines our project on modeling the pitch dynamics of an Unmanned Aerial Vehicle (UAV). We will explore the relevance of this dynamical system, develop a set of research questions, and present the mathematical model that describes the system.
+
+
+## (i) Importance and Relevance of the UAV Pitch Dynamics System
+
+Understanding the pitch dynamics of UAVs is critical for several reasons:
+
+- **Real-World Applications in Aerospace Engineering:**  
+  UAVs are increasingly used in applications such as aerial photography, delivery services, and search-and-rescue operations. Modeling the pitch dynamics is essential for designing robust and safe flight control systems.
+  
+- **Control System Design and Optimization:**  
+  The pitch angle is a key variable affecting the overall stability and maneuverability of a UAV. A precise model of pitch dynamics helps in designing control laws that ensure quick and stable responses to disturbances.
+  
+- **Insights into Dynamic Behavior:**  
+  The system captures both oscillatory behavior and damping effects, which are crucial for understanding resonance, transient response, and stability. This insight is valuable for predicting and mitigating potential control issues.
+  
+- **Interdisciplinary Learning:**  
+  This project integrates principles from classical mechanics, control theory, and numerical methods. It serves as a practical case study for applying theoretical models to real-world engineering challenges.
+  
+- **Economic and Technological Impact:**  
+  Accurate simulations reduce the need for expensive physical prototyping and assist in the rapid development and refinement of UAV technology.
+
+
+## (ii) Research Questions for the UAV Pitch Dynamics System
+
+The main questions we are interested in exploring are:
+
+1. **How do the physical parameters (moment of inertia, damping, stiffness) affect the dynamic response?**  
+   - How does changing these parameters influence settling time, overshoot, and oscillation?
+
+2. **What types of control inputs are effective at stabilizing pitch?**  
+   - Can we use simple feedback control (e.g., proportional-derivative) to stabilize the system from different initial pitch angles?  
+   - How do different controller gains affect system performance?
+
+3. **Under what conditions is the system underdamped, critically damped, or overdamped?**  
+   - How does the damping ratio vary across different physical setups?
+
+4. **Additional Research Questions:**  
+   - *How does the shape of the control input $u(t)$ (e.g., step, ramp, or sinusoidal) influence the transient and steady-state behavior of the UAV’s pitch dynamics?*  
+   - *Under what conditions (e.g., choice of numerical time step size, parameter values) does the numerical simulation accurately capture the expected physical behavior and maintain stability?*  
+   - *Can critical damping scenarios or resonance phenomena be identified within this system, and how can these insights be leveraged to enhance the UAV’s flight control performance?*
+
+These questions will help us build a comprehensive understanding of system behavior, guide our controller design choices, and ensure our simulation accurately reflects the UAV's physical dynamics.
+
+
+## (iii) Mathematical Model of the UAV Pitch Dynamics System
+
+The UAV's pitch dynamics are modeled by a second-order linear ordinary differential equation (ODE) that includes the effects of aerodynamic stiffness, damping, and external control. The governing equation is:
+
+$$
+\ddot{\theta}(t) + \frac{c}{I_{yy}} \, \dot{\theta}(t) + \frac{k}{I_{yy}} \, \theta(t) = \frac{u(t)}{I_{yy}},
+$$
+
+where:
+
+- $\theta(t)$ is the pitch angle (in radians),
+- $\dot{\theta}(t)$ is the pitch rate (in radians per second),
+- $\ddot{\theta}(t)$ is the angular acceleration,
+- $u(t)$ is the external control moment (in Newton-meters) applied to the UAV.
+
+### Parameters and Their Ranges
+
+1. **Moment of Inertia, $I_{yy}$:**  
+   - **Role:** Represents the UAV's resistance to changes in pitch motion.  
+   - **Suggested Range:** 1 to 5 kg·m$^2$.
+
+2. **Aerodynamic Stiffness, $k$:**  
+   - **Role:** Provides a restoring moment that brings the UAV back to equilibrium.  
+   - **Suggested Range:** 0.5 to 5 N·m/rad.
+
+3. **Aerodynamic Damping, $c$:**  
+   - **Role:** Dissipates energy and opposes the pitch rate, thus stabilizing the system.  
+   - **Suggested Range:** 0.2 to 1.0 N·m·s/rad.
+
+4. **Control Input, $u(t)$:**  
+   - **Role:** Represents the external moment (e.g., due to elevator deflection or thrust vectoring).  
+   - **Example:** A step input defined as:
+     
+     $$
+     u(t) = \begin{cases}
+     0, & t < t_0, \\
+     U_0, & t \ge t_0,
+     \end{cases}
+     $$
+     
+     where $t_0$ is the time at which the control action is initiated, and $U_0$ is the magnitude of the control moment.
+
+### Summary of the Mathematical Model
+
+Bringing it all together, the UAV pitch dynamics model is expressed as:
+
+$$
+\boxed{
+\ddot{\theta}(t) + \frac{c}{I_{yy}} \, \dot{\theta}(t) + \frac{k}{I_{yy}} \, \theta(t) = \frac{u(t)}{I_{yy}}
+}
+$$
+
+This model lays the foundation for our numerical simulations and provides a clear framework for exploring how changes in system parameters and control inputs affect the UAV's behavior.
+
+---
+---
+# Part 2: Numerical Method for Studying the UAV Pitch Dynamics System
+
+In this section, we present and analyze a numerical method to study the UAV pitch dynamics. Our goal is to investigate how changes in physical parameters and control inputs affect the system behavior while ensuring that the simulation is both accurate and computationally efficient. This discussion covers three main parts:
+
+1. **Justification of the Numerical Method**  
+2. **Mathematical Derivation of the RK4 Method (including Error and Stability Properties)**  
+3. **An Algorithmic Summary of How the Method Advances the Solution from $t_k$ to $t_{k+1}$**
+
+\
+
+## (i) Justification of the Numerical Method
+
+To study the UAV pitch dynamics described by the second-order ODE
+
+$$
+\ddot{\theta}(t) + \frac{c}{I_{yy}} \, \dot{\theta}(t) + \frac{k}{I_{yy}} \, \theta(t) = \frac{u(t)}{I_{yy}},
+$$
+
+we require a numerical method that satisfies several criteria:
+
+- **Accuracy:**  
+  The method must capture complex transient phenomena such as oscillations, overshoots, and damping effects reliably. We aim to resolve small differences that occur due to variations in system parameters. The fourth-order Runge-Kutta (RK4) method has a local truncation error of order $\mathcal{O}(\Delta t^5)$ and a global error of $\mathcal{O}(\Delta t^4)$, making it highly accurate for smooth solutions.
+
+- **Stability:**  
+  Given our system’s non-stiff nature (with realistic values for $k$, $c$, and $I_{yy}$), the RK4 method is sufficiently stable when an appropriate time step $\Delta t$ is chosen. Even though RK4 is explicit, its stability properties for linear systems can be reliably managed. For stiff scenarios, an implicit or adaptive method might be more appropriate, but for our purposes, RK4 strikes an excellent balance.
+
+- **Computational Efficiency (Cost):**  
+  Despite requiring four evaluations of the function per time step, the system's low dimensionality (typically two state variables) makes this cost manageable on modern hardware. Its simplicity in implementation and well-understood error characteristics further enhance its appeal for systematic studies such as convergence tests and parameter sensitivity analyses.
+
+Thus, based on these considerations, the RK4 method is selected as an appropriate tool for exploring the dynamical behavior of our UAV pitch model.
+
+\
+
+## (ii) Mathematical Derivation of the RK4 Method, Error, and Stability Properties
+
+### Derivation Overview
+
+Consider a general initial value problem (IVP):
+
+$$
+\dot{y}(t) = f(y(t), t), \quad y(t_0) = y_0.
+$$
+
+Using a Taylor series expansion, the exact solution at $t + \Delta t$ can be written as:
+
+$$
+y(t + \Delta t) = y(t) + \Delta t\, \dot{y}(t) + \frac{\Delta t^2}{2} \ddot{y}(t) + \frac{\Delta t^3}{6} y^{(3)}(t) + \frac{\Delta t^4}{24} y^{(4)}(t) + \mathcal{O}(\Delta t^5).
+$$
+
+The RK4 method approximates this solution by evaluating the slope function $f(y,t)$ at several points within the interval. This is achieved by computing four increments that, when appropriately weighted, cancel the lower order error terms.
+
+\
+
+### The RK4 Update Steps
+
+Define the time step as $\Delta t$ and let $t_k$ be the current time instance. The RK4 method computes the following intermediate values:
+
+1. **First Increment ($k_1$):**  
+   Evaluate the derivative at the beginning of the interval:
+   $$
+   k_1 = f\big( y(t_k), t_k \big)
+   $$
+
+2. **Second Increment ($k_2$):**  
+   Estimate the state at $t_k + \frac{\Delta t}{2}$ using $k_1$:
+   $$
+   k_2 = f\Big( y(t_k) + \frac{\Delta t}{2}\, k_1,\, t_k + \frac{\Delta t}{2} \Big)
+   $$
+
+3. **Third Increment ($k_3$):**  
+   Again, approximate the state at $t_k + \frac{\Delta t}{2}$ using $k_2$:
+   $$
+   k_3 = f\Big( y(t_k) + \frac{\Delta t}{2}\, k_2,\, t_k + \frac{\Delta t}{2} \Big)
+   $$
+
+4. **Fourth Increment ($k_4$):**  
+   Evaluate the derivative at the end of the interval:
+   $$
+   k_4 = f\Big( y(t_k) + \Delta t\, k_3,\, t_k + \Delta t \Big)
+   $$
+
+The final approximation for $y(t_{k+1})$ is given by:
+
+$$
+y(t_{k+1}) = y(t_k) + \frac{\Delta t}{6}\left( k_1 + 2 k_2 + 2 k_3 + k_4 \right)
+$$
+
+\
+
+### Error Analysis
+
+- **Local Truncation Error:**  
+  The error incurred in one RK4 step is $\mathcal{O}(\Delta t^5)$, which indicates that the error decreases rapidly with the time step size.
+  
+- **Global Error:**  
+  Due to error accumulation, the overall global error scales as $\mathcal{O}(\Delta t^4)$, classifying RK4 as a fourth-order method.
+
+\
+
+### Stability Analysis
+
+For the linear test equation
+
+$$
+\dot{y}(t) = \lambda y(t),
+$$
+
+where $\lambda$ is a constant (which may be complex), applying the RK4 method yields an update of the form:
+
+$$
+y(t + \Delta t) = R(z) \, y(t), \quad \text{where } z = \lambda \Delta t.
+$$
+
+The stability function $R(z)$ for RK4 is:
+
+$$
+R(z) = 1 + z + \frac{z^2}{2} + \frac{z^3}{6} + \frac{z^4}{24}.
+$$
+
+The method is stable if $|R(z)| \le 1$. For our application, with the typical parameter ranges for the UAV pitch dynamics, an appropriate choice of $\Delta t$ will ensure that the RK4 method remains stable.
+
+\
+
+## (iii) Algorithmic Summary of Advancing the Solution from $t_k$ to $t_{k+1}$
+
+The following outlines the step-by-step procedure used in the RK4 method to update the solution of our ODE from time instance $t_k$ to $t_{k+1} = t_k + \Delta t$.
+
+1. **Compute $k_1$:**
+   - Evaluate the derivative at $t_k$:
+
+     $$
+     k_1 = f\big( y(t_k), t_k \big)
+     $$
+
+2. **Compute $k_2$:**
+   - Estimate the state at $t_k + \frac{\Delta t}{2}$ using $k_1$:
+
+     $$
+     k_2 = f\left( y(t_k) + \frac{\Delta t}{2} \, k_1, \; t_k + \frac{\Delta t}{2} \right)
+     $$
+
+3. **Compute $k_3$:**
+   - Estimate the state at $t_k + \frac{\Delta t}{2}$ using $k_2$:
+
+     $$
+     k_3 = f\left( y(t_k) + \frac{\Delta t}{2} \, k_2, \; t_k + \frac{\Delta t}{2} \right)
+     $$
+
+4. **Compute $k_4$:**
+   - Evaluate the derivative at $t_k + \Delta t$ using $k_3$:
+
+     $$
+     k_4 = f\left( y(t_k) + \Delta t \, k_3, \; t_k + \Delta t \right)
+     $$
+
+5. **Update the Solution:**
+   - Combine the increments to obtain the next state:
+
+     $$
+     y(t_{k+1}) = y(t_k) + \frac{\Delta t}{6}\left( k_1 + 2k_2 + 2k_3 + k_4 \right)
+     $$
+
+## Summary
+
+The Fourth-Order Runge-Kutta (RK4) method is well-suited for our UAV pitch dynamics study due to its:
+- **High accuracy** (local error of $( O(h^5) )$, global error of $( O(h^4) )$),
+- **Robust stability** for non-stiff systems, and
+- **Balanced computational cost** through efficient use of function evaluations.
+
+The method is derived by matching the Taylor series of the true solution and is implemented via an algorithmic process that advances the solution from $( t_k )$ to $( t_{k+1} )$ using intermediate slope calculations. This comprehensive approach ensures that we can reliably study the dynamic behavior and parameter sensitivity of the UAV pitch dynamics.
+
+
+---
+---
+# Part 3: Demonstration of Correct Implementation
+
+In this question, we demonstrate that our numerical method (the fourth-order Runge-Kutta method, RK4) is implemented correctly. This demonstration is twofold:
+
+1. **Error Convergence Study**  
+   We verify that the numerical solution exhibits a global error that scales as $\mathcal{O}(\Delta t^4)$, which is expected for a fourth-order method. We do so by comparing the numerical solution for a homogeneous damped oscillator with an analytical solution.
+
+2. **Evaluation of Simulation Parameters**  
+   We evaluate the influence of the time step size $\Delta t$ on the simulation accuracy and behavior. In particular, we assess:
+   - The final error at a designated final time.
+   - The "settling time"—the time at which the system’s response (here, the pitch angle $\theta(t)$) falls below a certain threshold and remains below it, indicating that transient behavior has effectively decayed.
+   - Visual comparisons of time series for different time step sizes to confirm that both transient and steady-state behaviors are resolved accurately.
+
+Both parts inform the selection of an optimum $\Delta t$, providing a balance between computational cost and accuracy.
+
+
+## Background and Problem Setup
+
+We consider the homogeneous version of the UAV pitch dynamics (i.e., with $u(t)=0$):
+
+$$
+\ddot{\theta}(t) + \frac{c}{I_{yy}}\,\dot{\theta}(t) + \frac{k}{I_{yy}}\,\theta(t) = 0,
+$$
+
+with the initial conditions:
+
+$$
+\theta(0)=1, \quad \dot{\theta}(0)=0.
+$$
+
+For our study, we use the following parameter values:
+
+- Moment of inertia: $I_{yy} = 1.0$
+- Aerodynamic stiffness: $k = 2.0$
+- Aerodynamic damping: $c = 0.5$
+
+The analytical solution for this damped oscillator can be derived by first writing its characteristic equation:
+
+$$
+r^2 + \frac{c}{I_{yy}} r + \frac{k}{I_{yy}} = 0.
+$$
+
+Under underdamped conditions, we define:
+
+$$
+\text{damping} = \frac{c}{2I_{yy}}, \quad \omega_n = \sqrt{\frac{k}{I_{yy}}}, \quad \omega_d = \sqrt{\omega_n^2 - \text{damping}^2}.
+$$
+
+Then the exact solution is given by
+
+$$
+\theta(t) = e^{-\text{damping}\,t} \left( \cos (\omega_d\,t) + \frac{\text{damping}}{\omega_d} \sin (\omega_d\,t) \right).
+$$
+
+
+## 1. Error Convergence Study
+
+The error convergence study involves the following steps:
+
+1. **Simulation with Various $\Delta t$ Values:**  
+   We simulate the system from $t=0$ to a final time $T=1.0$ using several decreasing time step sizes ($\Delta t$).
+
+2. **Error Calculation:**  
+   For each $\Delta t$, we compute the numerical solution and then compare $\theta_{\text{num}}(T)$ with the analytical solution $\theta_{\text{exact}}(T)$ to obtain the absolute error.
+
+3. **Analysis with Log-Log Plot:**  
+   We plot the error versus $\Delta t$ on a log-log scale. A linear fit on the log-log data is used to determine the convergence rate. For a fourth-order method, we expect the slope to be approximately 4.
+
+This study confirms that our implementation correctly yields a global error scaling of $\mathcal{O}(\Delta t^4)$.
+
+
+## 2. Evaluation of Simulation Parameters
+
+To accurately study the UAV pitch dynamics, it is crucial to choose a time step $\Delta t$ that is small enough to capture the transient dynamics (such as rapid oscillations during early times) and yet large enough to make the simulation computationally efficient. In this section, we assess:
+
+- **Final Error at Extended Time:**  
+  We simulate until a final time $T_{\text{full}}=2.0$ seconds and measure the error between the numerical and analytical solutions.
+
+- **Settling Time:**  
+  We define the settling time as the time at which $|\theta(t)|$ first falls below a threshold (e.g., $0.01$) and remains below that threshold. This metric indicates how quickly the system settles after transients.
+
+- **Visual Comparison of Time Series:**  
+  By plotting $\theta(t)$ for various $\Delta t$, we visually confirm that the chosen time step accurately captures both the transient behavior and steady state.
+
+From our empirical analysis, a time step in the range of approximately $0.005$ to $0.015$ seconds typically provides a good trade-off between accuracy and computational load for our parameter set.
