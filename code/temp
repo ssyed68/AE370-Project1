@@ -1,0 +1,22 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Define the zero control input function (homogeneous system)
+def u_func(t):
+    return 0.0
+
+# Parameters for the homogeneous damped oscillator
+Iyy = 1.0
+k   = 2.0
+c   = 0.5
+
+# Define the dynamical system (state = [theta, theta_dot])
+def flight_dynamics(state, t, params):
+    theta, dtheta = state
+    u = params['control'](t)
+    dtheta_dt  = dtheta
+    # Compute angular acceleration from the ODE
+    ddtheta_dt = (- params['k'] * theta - params['c'] * dtheta + u) / params['Iyy']
+    return np.array([dtheta_dt, ddtheta_dt])
+
+params = {'Iyy': Iyy, 'k': k, 'c': c, 'control': u_func}
